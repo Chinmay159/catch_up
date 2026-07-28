@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CatchUp — Student Productivity Prototype</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --surface-soft: #fafbff;
+      --text: #172033;
+      --muted: #68738a;
+      --subtle: #94a0b5;
+      --border: #e6e8f0;
+      --border-strong: #d7dbe8;
+      --primary: #5b5ce2;
+      --primary-strong: #4849c9;
+      --primary-soft: #eeefff;
+      --primary-softer: #f7f7ff;
+      --success: #138a68;
+      --success-soft: #eaf8f2;
+      --warning: #b86a12;
+      --warning-soft: #fff4e5;
+      --danger: #cb3b5a;
+      --danger-soft: #fff0f3;
+      --blue: #3679d8;
+      --blue-soft: #edf5ff;
+      --shadow-sm: 0 1px 2px rgba(26, 35, 58, 0.04);
+      --shadow-md: 0 14px 38px rgba(34, 42, 71, 0.08);
+      --radius-sm: 9px;
+      --radius: 14px;
+      --radius-lg: 20px;
+      --sidebar: 238px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid rgba(91, 92, 226, 0.24);
+      outline-offset: 2px;
+    }
+    a { color: inherit; text-decoration: none; }
+    h1, h2, h3, h4, p { margin-top: 0; }
+
+    #app { min-height: 100vh; }
+    .shell { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--sidebar);
+      padding: 22px 16px;
+      background: rgba(255,255,255,0.96);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 30;
+      backdrop-filter: blur(16px);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 24px; font-weight: 780; letter-spacing: -0.03em; font-size: 20px; }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 12px;
+      display: grid; place-items: center;
+      color: white; font-weight: 800;
+      background: linear-gradient(145deg, #7374f0, #4c4dcf);
+      box-shadow: 0 7px 18px rgba(91,92,226,.24);
+    }
+    .nav-label { color: var(--subtle); font-size: 11px; font-weight: 760; letter-spacing: .09em; text-transform: uppercase; padding: 12px 12px 8px; }
+    .nav { display: flex; flex-direction: column; gap: 4px; }
+    .nav-button {
+      width: 100%; border: 0; background: transparent; color: var(--muted);
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 11px; text-align: left; font-weight: 650;
+      transition: .18s ease;
+    }
+    .nav-button:hover { background: #f5f6fb; color: var(--text); }
+    .nav-button.active { background: var(--primary-soft); color: var(--primary-strong); }
+    .nav-button.recovery { margin-top: 6px; border: 1px solid transparent; }
+    .nav-button.recovery.active { border-color: #d9dafe; }
+    .nav-icon { width: 20px; height: 20px; display: inline-flex; flex: 0 0 20px; }
+    .nav-spacer { flex: 1; }
+    .sidebar-note {
+      background: var(--primary-softer); border: 1px solid #e8e9ff; border-radius: 14px;
+      padding: 14px; margin: 14px 4px 8px;
+    }
+    .sidebar-note strong { display: block; font-size: 13px; margin-bottom: 4px; }
+    .sidebar-note p { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+
+    .content-wrap { grid-column: 2; min-width: 0; }
+    .topbar {
+      height: 72px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 30px; background: rgba(246,247,251,.86); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(230,232,240,.85); position: sticky; top: 0; z-index: 20;
+    }
+    .topbar-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .mobile-menu { display: none; }
+    .eyebrow { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .page-title { margin: 0; font-size: 22px; letter-spacing: -0.035em; line-height: 1.15; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .sync-pill { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,.74); border: 1px solid var(--border); }
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+    .icon-button { width: 39px; height: 39px; border-radius: 11px; border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center; color: var(--muted); }
+    .icon-button:hover { color: var(--text); border-color: var(--border-strong); }
+    .avatar { width: 38px; height: 38px; border-radius: 50%; background: #dfe3ff; color: var(--primary-strong); display: grid; place-items: center; font-size: 13px; font-weight: 800; border: 2px solid white; box-shadow: 0 0 0 1px var(--border); }
+
+    .main { max-width: 1420px; margin: 0 auto; padding: 30px; }
+    .page-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 24px; }
+    .page-heading h2 { font-size: 28px; letter-spacing: -0.045em; margin-bottom: 6px; }
+    .page-heading p { color: var(--muted); margin: 0; max-width: 700px; }
+    .heading-actions { display: flex; align-items: center; gap: 10px; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+    .card-pad { padding: 20px; }
+    .section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+    .section-title h3 { font-size: 16px; margin: 0; letter-spacing: -0.02em; }
+    .section-title small { color: var(--muted); }
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+    .hidden { display: none !important; }
+
+    .btn {
+      min-height: 41px; border: 1px solid transparent; border-radius: 10px; padding: 9px 15px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-weight: 700; font-size: 13px; transition: .18s ease; white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 5px 14px rgba(91,92,226,.18); }
+    .btn-primary:hover { background: var(--primary-strong); transform: translateY(-1px); }
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+    .btn-secondary:hover { background: #f8f9fc; }
+    .btn-soft { background: var(--primary-soft); color: var(--primary-strong); }
+    .btn-soft:hover { background: #e3e4ff; }
+    .btn-ghost { background: transparent; color: var(--muted); padding-inline: 10px; }
+    .btn-ghost:hover { color: var(--text); background: #f5f6fa; }
+    .btn-danger { color: var(--danger); background: var(--danger-soft); }
+    .btn-sm { min-height: 34px; padding: 7px 11px; font-size: 12px; border-radius: 9px; }
+
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 760; white-space: nowrap; }
+    .badge-high { color: #ae2d49; background: var(--danger-soft); }
+    .badge-medium { color: #99600e; background: var(--warning-soft); }
+    .badge-low { color: #536078; background: #f0f2f6; }
+    .badge-draft { color: var(--primary-strong); background: var(--primary-soft); border: 1px dashed #bdbff8; }
+    .badge-success { color: var(--success); background: var(--success-soft); }
+    .badge-neutral { color: var(--muted); background: #f3f4f7; }
+    .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(310px, .88fr); gap: 20px; align-items: start; }
+    .dashboard-main, .dashboard-side { display: grid; gap: 20px; }
+    .hero-card { padding: 25px; overflow: hidden; position: relative; background: linear-gradient(150deg, #fff 46%, #f5f5ff 100%); }
+    .hero-card::after { content: ""; position: absolute; width: 220px; height: 220px; border-radius: 50%; background: rgba(91,92,226,.08); right: -100px; top: -120px; }
+    .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 30px; position: relative; z-index: 1; }
+    .hero-label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--primary-strong); font-weight: 760; }
+    .hero-title { font-size: clamp(25px, 3vw, 34px); max-width: 720px; line-height: 1.13; letter-spacing: -0.05em; margin-bottom: 8px; position: relative; z-index: 1; }
+    .course-line { color: var(--muted); font-size: 14px; position: relative; z-index: 1; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 22px 0; position: relative; z-index: 1; }
+    .meta-item { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; }
+    .reason-box { border: 1px solid #e1e2fb; background: rgba(247,247,255,.86); padding: 14px 15px; border-radius: 12px; display: flex; gap: 11px; margin: 18px 0 22px; max-width: 760px; position: relative; z-index: 1; }
+    .reason-box strong { display: block; font-size: 12px; margin-bottom: 2px; color: var(--primary-strong); }
+    .reason-box span { color: var(--muted); font-size: 13px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
+
+    .timeline { position: relative; }
+    .timeline-item { display: grid; grid-template-columns: 72px 18px minmax(0,1fr); gap: 10px; align-items: stretch; min-height: 72px; }
+    .timeline-time { padding-top: 3px; color: var(--muted); font-size: 12px; text-align: right; }
+    .timeline-marker { display: flex; flex-direction: column; align-items: center; }
+    .timeline-dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 6px; background: var(--border-strong); z-index: 1; }
+    .timeline-line { width: 1px; flex: 1; background: var(--border); }
+    .timeline-item:last-child .timeline-line { visibility: hidden; }
+    .timeline-event { margin-bottom: 12px; padding: 12px 13px; border-radius: 11px; border: 1px solid var(--border); background: #fafbfc; }
+    .timeline-event.study { background: var(--primary-softer); border-color: #dcddfb; }
+    .timeline-event.draft { border-style: dashed; }
+    .timeline-event strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .timeline-event span { color: var(--muted); font-size: 11px; }
+
+    .tabs { display: inline-flex; background: #f3f4f8; padding: 3px; border-radius: 9px; gap: 2px; }
+    .tab { border: 0; background: transparent; color: var(--muted); padding: 6px 10px; border-radius: 7px; font-size: 11px; font-weight: 700; }
+    .tab.active { background: white; color: var(--text); box-shadow: 0 1px 3px rgba(27,36,63,.09); }
+    .assignment-list { display: grid; gap: 4px; }
+    .assignment-row {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center;
+      border: 0; background: transparent; width: 100%; padding: 13px 10px; border-radius: 10px; text-align: left;
+      transition: .16s ease;
+    }
+    .assignment-row:hover { background: #f8f9fc; }
+    .assignment-title { display: flex; gap: 11px; align-items: flex-start; min-width: 0; }
+    .course-chip { width: 8px; height: 32px; border-radius: 6px; flex: 0 0 8px; background: var(--blue); }
+    .assignment-title strong { display: block; font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .assignment-title small { color: var(--muted); display: block; margin-top: 3px; font-size: 11px; }
+    .assignment-meta { display: flex; align-items: center; gap: 8px; }
+    .due { min-width: 72px; text-align: right; color: var(--muted); font-size: 11px; }
+
+    .alert-card { padding: 17px; border-color: #f0d7aa; background: #fffbf5; }
+    .alert-head { display: flex; align-items: flex-start; gap: 11px; }
+    .alert-icon { width: 32px; height: 32px; border-radius: 9px; background: var(--warning-soft); color: var(--warning); display: grid; place-items: center; flex: 0 0 32px; }
+    .alert-card h4 { margin: 0 0 4px; font-size: 13px; }
+    .alert-card p { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+
+    .progress-card { padding: 20px; }
+    .progress-numbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+    .progress-stat { background: var(--surface-soft); border-radius: 11px; padding: 12px; }
+    .progress-stat strong { display: block; font-size: 19px; letter-spacing: -0.04em; }
+    .progress-stat span { color: var(--muted); font-size: 10px; }
+
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+    .search { position: relative; min-width: 250px; }
+    .search input { width: 100%; min-height: 40px; border: 1px solid var(--border-strong); border-radius: 10px; background: white; padding: 9px 12px 9px 38px; color: var(--text); }
+    .search svg { position: absolute; left: 12px; top: 11px; color: var(--subtle); }
+    .select { min-height: 40px; border: 1px solid var(--border-strong); border-radius: 10px; background: white; color: var(--text); padding: 8px 32px 8px 11px; }
+
+    .assignment-table { overflow: hidden; }
+    .table-head, .table-row { display: grid; grid-template-columns: minmax(240px, 1.6fr) minmax(130px, .75fr) minmax(100px,.55fr) minmax(100px,.55fr) 110px 34px; align-items: center; column-gap: 16px; }
+    .table-head { color: var(--subtle); font-size: 10px; font-weight: 780; text-transform: uppercase; letter-spacing: .07em; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+    .table-row { padding: 15px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: .15s ease; }
+    .table-row:last-child { border-bottom: 0; }
+    .table-row:hover { background: #fafbfe; }
+    .table-title strong { font-size: 13px; display: block; margin-bottom: 3px; }
+    .table-title span, .table-cell { color: var(--muted); font-size: 12px; }
+    .status-line { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+
+    .detail-layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(300px,.7fr); gap: 20px; align-items: start; }
+    .detail-header { padding: 25px; }
+    .detail-back { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 700; border: 0; background: transparent; padding: 0; margin-bottom: 22px; }
+    .detail-header h2 { font-size: 30px; letter-spacing: -0.045em; margin-bottom: 7px; }
+    .detail-description { color: var(--muted); font-size: 14px; margin-top: 22px; }
+    .info-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 22px; }
+    .info-item { border: 1px solid var(--border); border-radius: 11px; padding: 12px; }
+    .info-item span { color: var(--muted); font-size: 10px; display: block; text-transform: uppercase; letter-spacing: .06em; font-weight: 720; margin-bottom: 4px; }
+    .info-item strong { font-size: 13px; }
+    .reason-list { display: grid; gap: 10px; }
+    .reason-item { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 10px; background: var(--surface-soft); }
+    .reason-check { width: 22px; height: 22px; border-radius: 7px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; flex: 0 0 22px; }
+    .reason-item strong { font-size: 12px; display: block; margin-bottom: 2px; }
+    .reason-item span { color: var(--muted); font-size: 11px; }
+    .session-list { display: grid; gap: 9px; }
+    .session-item { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px; background: var(--primary-softer); border: 1px dashed #c9caf6; border-radius: 11px; }
+    .session-item strong { display: block; font-size: 12px; }
+    .session-item span { color: var(--muted); font-size: 11px; }
+    .progress-track { height: 7px; border-radius: 999px; background: #eceef5; overflow: hidden; margin: 12px 0 6px; }
+    .progress-fill { height: 100%; background: var(--primary); border-radius: inherit; }
+
+    .planner-shell { display: grid; grid-template-columns: 225px minmax(0,1fr) 288px; gap: 16px; align-items: start; }
+    .planner-side { padding: 16px; position: sticky; top: 92px; }
+    .mini-cal { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; text-align: center; margin-top: 12px; }
+    .mini-cal span { font-size: 10px; color: var(--muted); padding: 5px 0; }
+    .mini-cal button { border: 0; background: transparent; width: 27px; height: 27px; border-radius: 8px; font-size: 11px; color: var(--text); }
+    .mini-cal button.active { background: var(--primary); color: white; }
+    .filter-list { display: grid; gap: 8px; margin-top: 18px; }
+    .check-row { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; }
+    .check-row input { accent-color: var(--primary); }
+    .unscheduled-list { display: grid; gap: 9px; margin-top: 13px; }
+    .unscheduled-card { padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); cursor: pointer; }
+    .unscheduled-card:hover { border-color: #c7c9f6; background: var(--primary-softer); }
+    .unscheduled-card strong { display: block; font-size: 11px; margin-bottom: 3px; }
+    .unscheduled-card span { color: var(--muted); font-size: 10px; }
+
+    .calendar-card { overflow: hidden; min-width: 0; }
+    .calendar-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .calendar-toolbar h3 { margin: 0; font-size: 14px; }
+    .calendar-grid { display: grid; grid-template-columns: 52px repeat(3, minmax(150px,1fr)); position: relative; min-height: 690px; }
+    .cal-time-col, .cal-day { position: relative; border-right: 1px solid var(--border); }
+    .cal-day:last-child { border-right: 0; }
+    .cal-head { height: 54px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-direction: column; position: sticky; top: 0; background: white; z-index: 3; }
+    .cal-head strong { font-size: 12px; }
+    .cal-head span { color: var(--muted); font-size: 10px; }
+    .cal-time-col .cal-head { color: var(--muted); font-size: 9px; }
+    .time-label { position: absolute; left: 0; right: 6px; font-size: 9px; color: var(--subtle); text-align: right; transform: translateY(-50%); }
+    .hour-line { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); }
+    .cal-event { position: absolute; left: 7px; right: 7px; border-radius: 8px; padding: 8px; overflow: hidden; z-index: 2; font-size: 10px; border: 1px solid transparent; }
+    .cal-event strong { display: block; font-size: 10px; line-height: 1.25; margin-bottom: 2px; }
+    .cal-event span { font-size: 9px; opacity: .82; }
+    .cal-event.busy { background: #eef1f6; color: #485369; border-color: #dfe3ea; }
+    .cal-event.study { background: var(--primary-soft); color: #3f40b0; border-color: #c8caf6; }
+    .cal-event.draft { border-style: dashed; }
+    .cal-event.warning { background: var(--warning-soft); color: #865314; border-color: #f0cc92; }
+    .now-line { position: absolute; left: 0; right: 0; height: 1px; background: var(--danger); z-index: 2; }
+    .now-line::before { content: ""; position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+
+    .context-card { padding: 17px; }
+    .context-card + .context-card { margin-top: 14px; }
+    .context-card h3 { font-size: 14px; margin-bottom: 5px; }
+    .context-card p { color: var(--muted); font-size: 11px; }
+    .slot-list { display: grid; gap: 8px; margin-top: 12px; }
+    .slot { width: 100%; border: 1px solid var(--border); background: white; border-radius: 9px; padding: 10px; text-align: left; display: flex; justify-content: space-between; gap: 8px; }
+    .slot:hover { border-color: #bbbdf3; background: var(--primary-softer); }
+    .slot strong { display: block; font-size: 11px; }
+    .slot span { color: var(--muted); font-size: 10px; }
+
+    .class-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 15px; }
+    .class-card { padding: 18px; position: relative; transition: .18s ease; }
+    .class-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .class-color { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; color: white; font-weight: 800; margin-bottom: 20px; }
+    .class-card h3 { font-size: 15px; margin-bottom: 4px; }
+    .class-card p { color: var(--muted); font-size: 11px; margin-bottom: 16px; }
+    .class-stats { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .class-stats span { color: var(--muted); font-size: 10px; }
+    .switch { position: relative; width: 40px; height: 23px; display: inline-block; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: #d9deea; border-radius: 999px; transition: .18s; }
+    .slider::before { content: ""; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,.18); transition: .18s; }
+    .switch input:checked + .slider { background: var(--primary); }
+    .switch input:checked + .slider::before { transform: translateX(17px); }
+
+    .review-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+    .summary-card { padding: 16px; }
+    .summary-card strong { display: block; font-size: 22px; letter-spacing: -0.04em; }
+    .summary-card span { color: var(--muted); font-size: 11px; }
+    .review-layout { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(280px,.6fr); gap: 20px; align-items: start; }
+    .day-group { padding: 18px; margin-bottom: 12px; }
+    .day-group h3 { font-size: 14px; margin-bottom: 14px; }
+    .review-session { display: grid; grid-template-columns: 28px 90px minmax(0,1fr) auto; gap: 11px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
+    .review-session:first-of-type { border-top: 0; }
+    .review-session input { accent-color: var(--primary); }
+    .review-time { color: var(--muted); font-size: 11px; }
+    .review-session strong { display: block; font-size: 12px; }
+    .review-session span { color: var(--muted); font-size: 10px; }
+    .issue-box { padding: 14px; border-radius: 11px; background: var(--warning-soft); border: 1px solid #efd29e; margin-top: 13px; }
+    .issue-box strong { display: block; font-size: 12px; margin-bottom: 4px; }
+    .issue-box p { color: #80561c; font-size: 11px; margin-bottom: 10px; }
+    .sticky-review { position: sticky; top: 92px; }
+
+    .recovery-wrap { max-width: 960px; margin: 0 auto; }
+    .recovery-hero { padding: 26px; background: linear-gradient(145deg,#fff 40%,#f3f3ff); margin-bottom: 18px; }
+    .recovery-hero h2 { font-size: 28px; letter-spacing: -0.04em; margin-bottom: 8px; }
+    .recovery-hero p { color: var(--muted); max-width: 690px; }
+    .stepper { display: flex; gap: 8px; align-items: center; margin: 22px 0 4px; }
+    .step { display: flex; align-items: center; gap: 7px; color: var(--subtle); font-size: 11px; font-weight: 700; }
+    .step-num { width: 25px; height: 25px; border-radius: 50%; border: 1px solid var(--border-strong); display: grid; place-items: center; background: white; }
+    .step.active { color: var(--primary-strong); }
+    .step.active .step-num { background: var(--primary); color: white; border-color: var(--primary); }
+    .step.done { color: var(--success); }
+    .step.done .step-num { background: var(--success-soft); color: var(--success); border-color: #bde6d8; }
+    .step-line { height: 1px; width: 35px; background: var(--border-strong); }
+    .recovery-panel { padding: 24px; }
+    .recovery-panel h3 { font-size: 18px; margin-bottom: 5px; }
+    .recovery-panel > p { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+    .selectable-task { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 13px; border: 1px solid var(--border); border-radius: 11px; margin-bottom: 9px; }
+    .selectable-task input { accent-color: var(--primary); }
+    .selectable-task strong { display: block; font-size: 12px; }
+    .selectable-task span { color: var(--muted); font-size: 10px; }
+    .recovery-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .option-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 11px; }
+    .option-card { border: 1px solid var(--border); border-radius: 11px; background: white; padding: 15px; text-align: left; }
+    .option-card.active { border-color: var(--primary); background: var(--primary-softer); box-shadow: 0 0 0 2px rgba(91,92,226,.08); }
+    .option-card strong { display: block; font-size: 12px; margin-bottom: 3px; }
+    .option-card span { color: var(--muted); font-size: 10px; }
+
+    .settings-layout { display: grid; grid-template-columns: 210px minmax(0,1fr); gap: 20px; }
+    .settings-nav { padding: 10px; position: sticky; top: 92px; }
+    .settings-nav button { width: 100%; border: 0; background: transparent; text-align: left; padding: 10px 11px; color: var(--muted); border-radius: 9px; font-size: 12px; font-weight: 650; }
+    .settings-nav button.active { color: var(--primary-strong); background: var(--primary-soft); }
+    .settings-card { padding: 22px; margin-bottom: 14px; }
+    .settings-card h3 { font-size: 16px; margin-bottom: 4px; }
+    .settings-card > p { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 15px 0; border-top: 1px solid var(--border); }
+    .setting-row:first-of-type { border-top: 0; }
+    .setting-copy strong { display: block; font-size: 12px; margin-bottom: 3px; }
+    .setting-copy span { color: var(--muted); font-size: 10px; }
+    .field { display: flex; align-items: center; gap: 8px; }
+    .field input[type="time"], .field input[type="number"] { border: 1px solid var(--border-strong); border-radius: 9px; padding: 8px 10px; background: white; color: var(--text); width: 110px; }
+
+    .empty-state { padding: 60px 28px; text-align: center; }
+    .empty-icon { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; margin: 0 auto 16px; background: var(--primary-soft); color: var(--primary); }
+    .empty-state h3 { font-size: 17px; margin-bottom: 5px; }
+    .empty-state p { color: var(--muted); font-size: 12px; max-width: 440px; margin: 0 auto 17px; }
+
+    .toast-stack { position: fixed; right: 20px; bottom: 20px; z-index: 100; display: grid; gap: 8px; pointer-events: none; }
+    .toast { min-width: 260px; max-width: 360px; background: #1f293b; color: white; padding: 12px 14px; border-radius: 11px; box-shadow: var(--shadow-md); display: flex; gap: 10px; align-items: center; animation: slideIn .25s ease; font-size: 12px; }
+    @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(20,26,43,.42); display: grid; place-items: center; padding: 20px; z-index: 80; backdrop-filter: blur(4px); }
+    .modal { width: min(520px,100%); background: white; border-radius: 18px; box-shadow: 0 22px 80px rgba(18,25,48,.25); overflow: hidden; }
+    .modal-head, .modal-body, .modal-actions { padding: 18px 20px; }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .modal-head h3 { margin: 0; font-size: 16px; }
+    .modal-body p { color: var(--muted); font-size: 12px; }
+    .modal-actions { border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 9px; }
+    .modal-form { display: grid; gap: 12px; }
+    .modal-form label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 650; }
+    .modal-form input, .modal-form select { border: 1px solid var(--border-strong); border-radius: 9px; padding: 9px 10px; color: var(--text); background: white; }
+
+    .mobile-bottom { display: none; }
+    .mobile-sidebar-backdrop { display: none; }
+
+    @media (max-width: 1180px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .dashboard-side { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .progress-card { grid-column: span 2; }
+      .planner-shell { grid-template-columns: 190px minmax(0,1fr); }
+      .planner-shell > :last-child { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+      .context-card + .context-card { margin-top: 0; }
+      .class-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    }
+
+    @media (max-width: 900px) {
+      :root { --sidebar: 0px; }
+      .shell { display: block; }
+      .sidebar { transform: translateX(-104%); width: 250px; transition: .2s ease; box-shadow: 20px 0 50px rgba(20,25,45,.16); }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-sidebar-backdrop { position: fixed; inset: 0; background: rgba(20,26,43,.32); z-index: 29; display: block; }
+      .content-wrap { grid-column: auto; }
+      .mobile-menu { display: grid; }
+      .topbar { padding: 0 18px; }
+      .main { padding: 22px 18px 90px; }
+      .sync-pill span:last-child { display: none; }
+      .planner-shell { grid-template-columns: 1fr; }
+      .planner-side { position: static; }
+      .planner-shell > :last-child { grid-column: auto; grid-template-columns: 1fr 1fr; }
+      .detail-layout, .review-layout, .settings-layout { grid-template-columns: 1fr; }
+      .settings-nav { display: flex; overflow-x: auto; position: static; }
+      .settings-nav button { width: auto; white-space: nowrap; }
+      .mobile-bottom {
+        display: grid; grid-template-columns: repeat(4,1fr); position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 40;
+        background: rgba(255,255,255,.95); backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: 16px; padding: 6px; box-shadow: 0 12px 38px rgba(25,34,60,.15);
+      }
+      .mobile-bottom button { border: 0; background: transparent; color: var(--muted); border-radius: 10px; padding: 8px 3px 6px; display: grid; place-items: center; gap: 2px; font-size: 9px; font-weight: 700; }
+      .mobile-bottom button.active { background: var(--primary-soft); color: var(--primary-strong); }
+      .mobile-bottom svg { width: 18px; height: 18px; }
+    }
+
+    @media (max-width: 700px) {
+      .page-heading { display: block; }
+      .page-heading h2 { font-size: 25px; }
+      .heading-actions { margin-top: 14px; }
+      .heading-actions .btn { flex: 1; }
+      .dashboard-side { grid-template-columns: 1fr; }
+      .progress-card { grid-column: auto; }
+      .hero-card { padding: 21px; }
+      .hero-top { margin-bottom: 22px; }
+      .hero-title { font-size: 27px; }
+      .toolbar { align-items: stretch; flex-direction: column; }
+      .toolbar-left, .toolbar-right { width: 100%; }
+      .search { flex: 1; min-width: 0; }
+      .assignment-table { overflow-x: auto; }
+      .table-head, .table-row { min-width: 830px; }
+      .info-grid { grid-template-columns: 1fr; }
+      .calendar-grid { grid-template-columns: 46px minmax(260px,1fr); overflow-x: auto; }
+      .cal-day:nth-of-type(n+3) { display: none; }
+      .planner-shell > :last-child { grid-template-columns: 1fr; }
+      .class-grid { grid-template-columns: 1fr; }
+      .review-summary { grid-template-columns: repeat(2,1fr); }
+      .review-session { grid-template-columns: 26px 74px minmax(0,1fr); }
+      .review-session > .btn { grid-column: 2 / -1; justify-self: start; }
+      .option-grid { grid-template-columns: 1fr; }
+      .step span:not(.step-num) { display: none; }
+      .step-line { flex: 1; }
+      .top-actions .sync-pill { display: none; }
+      .modal-backdrop { align-items: end; padding: 0; }
+      .modal { border-radius: 18px 18px 0 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toasts" class="toast-stack" aria-live="polite"></div>
+
+  <script>
+    const icons = {
+      home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></svg>',
+      list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+      book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5z"/><path d="M4 6.5v13"/></svg>',
+      recovery: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 6v5h-5"/><path d="M19 11a7.5 7.5 0 1 0 .4 5"/><path d="M12 8v4l2.5 1.5"/></svg>',
+      settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2V9.6h.1A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8 3.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2h4v.1A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 8c.14.38.36.73.66 1 .3.27.69.42 1.1.42H21v4h-.1A1.7 1.7 0 0 0 19.4 15z"/></svg>',
+      bell: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+      menu: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+      clock: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+      calendarSmall: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>',
+      sparkle: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4z"/><path d="m18.5 14 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>',
+      arrow: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+      back: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
+      check: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 12 4 4L19 6"/></svg>',
+      alert: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10.3 4.2 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+      search: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>',
+      more: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
+      edit: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg>',
+      plus: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+      lock: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+      x: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+      refresh: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6v5h-5"/><path d="M19 11a7 7 0 1 0 .1 4"/></svg>',
+      open: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>',
+      filter: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M7 12h10M10 19h4"/></svg>',
+      help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.7 2.7 0 1 1 4.4 2.1c-1 .75-1.9 1.1-1.9 2.4M12 17h.01"/></svg>'
+    };
+
+    const assignments = [
+      { id: 1, title: 'Physics Lab Analysis', course: 'AP Physics', due: 'Tomorrow, 11:59 PM', dueShort: 'Tomorrow', minutes: 50, priority: 'high', score: 92, status: 'Unscheduled', overdue: false, noDue: false, color: '#3679d8', description: 'Analyze the cart acceleration data, create two graphs, and answer the conclusion questions in the lab document.', reasons: ['Due in less than 24 hours', 'Needs a focused 50-minute block', 'No study time has been scheduled yet'] },
+      { id: 2, title: 'Essay Draft: The Great Gatsby', course: 'English 11', due: 'Friday, 11:59 PM', dueShort: 'Fri', minutes: 80, priority: 'high', score: 84, status: 'Partially scheduled', overdue: false, noDue: false, color: '#9c59d1', description: 'Write a complete first draft analyzing how Fitzgerald develops the idea of reinvention.', reasons: ['Long assignment with 80 minutes estimated', 'Only 40 of 80 minutes are scheduled', 'Due within three days'] },
+      { id: 3, title: 'Chapter 7 Problem Set', course: 'Calculus III', due: 'Yesterday, 9:00 AM', dueShort: 'Overdue', minutes: 45, priority: 'high', score: 98, status: 'Unscheduled', overdue: true, noDue: false, color: '#e05b5b', description: 'Complete problems 2–24 even and submit the written work as a PDF.', reasons: ['Assignment is overdue', 'No work session is scheduled', 'Estimated to take 45 minutes'] },
+      { id: 4, title: 'Cold War Reading Notes', course: 'AP U.S. History', due: 'Thursday, 8:00 AM', dueShort: 'Thu', minutes: 30, priority: 'medium', score: 68, status: 'Scheduled', overdue: false, noDue: false, color: '#d68b32', description: 'Read pages 604–618 and prepare one page of notes for discussion.', reasons: ['Due within two days', 'A 30-minute session is already scheduled', 'Short enough to fit in an evening opening'] },
+      { id: 5, title: 'Vocabulary Practice', course: 'Spanish IV', due: 'Next Monday', dueShort: 'Mon', minutes: 20, priority: 'low', score: 35, status: 'Unscheduled', overdue: false, noDue: false, color: '#2d9d78', description: 'Review Unit 4 vocabulary and complete the Quizlet practice set.', reasons: ['Deadline is several days away', 'Estimated to take only 20 minutes', 'More urgent work should come first'] },
+      { id: 6, title: 'Optional Review Packet', course: 'AP Chemistry', due: 'No due date', dueShort: 'Backlog', minutes: 35, priority: 'low', score: 18, status: 'Backlog', overdue: false, noDue: true, color: '#4d91a8', description: 'Optional review problems for the equilibrium unit.', reasons: ['No due date is provided', 'Kept in backlog instead of urgent work', 'Can be scheduled when higher-priority work is complete'] }
+    ];
+
+    const state = {
+      route: 'home',
+      selectedAssignment: assignments[0],
+      assignmentTab: 'upcoming',
+      mobileSidebar: false,
+      modal: null,
+      recoveryStep: 1,
+      workload: '2',
+      classes: [
+        { name:'AP Physics', teacher:'Ms. Carter', section:'Period 2', count:4, tracked:true, color:'#3679d8', initials:'PH' },
+        { name:'English 11', teacher:'Mr. Delgado', section:'Period 3', count:3, tracked:true, color:'#9c59d1', initials:'EN' },
+        { name:'Calculus III', teacher:'Dr. Beert', section:'Dual Enrollment', count:2, tracked:true, color:'#e05b5b', initials:'C3' },
+        { name:'AP U.S. History', teacher:'Mr. Lamphier', section:'Period 5', count:5, tracked:true, color:'#d68b32', initials:'US' },
+        { name:'Spanish IV', teacher:'Mrs. Rivera', section:'Period 6', count:1, tracked:true, color:'#2d9d78', initials:'SP' },
+        { name:'AP Chemistry', teacher:'Ms. Moore', section:'Period 7', count:0, tracked:false, color:'#4d91a8', initials:'CH' }
+      ]
+    };
+
+    function icon(name, cls='') { return `<span class="${cls}">${icons[name] || ''}</span>`; }
+    function priorityBadge(priority) { return `<span class="badge badge-${priority}"><span class="dot"></span>${priority[0].toUpperCase()+priority.slice(1)}</span>`; }
+    function routeTitle(route) {
+      return {home:'Home', assignments:'Assignments', planner:'Planner', classes:'Classes', recovery:'Catch-Up Mode', settings:'Settings', review:'Review Study Plan', detail:'Assignment'}[route] || 'CatchUp';
+    }
+    function toast(message) {
+      const root = document.getElementById('toasts');
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.innerHTML = `${icon('check')}<span>${message}</span>`;
+      root.appendChild(el);
+      setTimeout(()=>el.remove(), 2800);
+    }
+    function setRoute(route) { state.route = route; state.mobileSidebar = false; window.scrollTo({top:0}); render(); }
+    function openAssignment(id) { state.selectedAssignment = assignments.find(a=>a.id===Number(id)); state.route='detail'; render(); }
+    function openModal(type, payload={}) { state.modal = {type, payload}; render(); }
+    function closeModal() { state.modal = null; render(); }
+
+    function sidebar() {
+      const items = [
+        ['home','home','Home'], ['assignments','list','Assignments'], ['planner','calendar','Planner'], ['classes','book','Classes'], ['recovery','recovery','Catch-Up Mode']
+      ];
+      return `
+        ${state.mobileSidebar ? '<div class="mobile-sidebar-backdrop" onclick="state.mobileSidebar=false;render()"></div>' : ''}
+        <aside class="sidebar ${state.mobileSidebar?'open':''}" aria-label="Primary navigation">
+          <div class="brand"><span class="brand-mark">C</span><span>CatchUp</span></div>
+          <div class="nav-label">Workspace</div>
+          <nav class="nav">
+            ${items.map(([route,ic,label])=>`<button class="nav-button ${state.route===route || (route==='assignments' && state.route==='detail') || (route==='planner' && state.route==='review')?'active':''} ${route==='recovery'?'recovery':''}" onclick="setRoute('${route}')">${icon(ic,'nav-icon')}<span>${label}</span></button>`).join('')}
+          </nav>
+          <div class="nav-spacer"></div>
+          <div class="sidebar-note">
+            <strong>3 tasks need attention</strong>
+            <p>One is overdue and two still need study time.</p>
+            <button class="btn btn-soft btn-sm" onclick="setRoute('recovery')">Make a recovery plan</button>
+          </div>
+          <nav class="nav">
+            <button class="nav-button ${state.route==='settings'?'active':''}" onclick="setRoute('settings')">${icon('settings','nav-icon')}<span>Settings</span></button>
+            <button class="nav-button" onclick="toast('Help center would open here.')">${icon('help','nav-icon')}<span>Help</span></button>
+          </nav>
+        </aside>`;
+    }
+
+    function topbar() {
+      return `<header class="topbar">
+        <div class="topbar-title">
+          <button class="icon-button mobile-menu" aria-label="Open navigation" onclick="state.mobileSidebar=true;render()">${icons.menu}</button>
+          <div><div class="eyebrow">Tuesday, July 28</div><h1 class="page-title">${routeTitle(state.route)}</h1></div>
+        </div>
+        <div class="top-actions">
+          <div class="sync-pill"><span class="sync-dot"></span><span>Google connected</span><span>· Synced 8 min ago</span></div>
+          <button class="icon-button" aria-label="Notifications" onclick="toast('No new notifications.')">${icons.bell}</button>
+          <div class="avatar" aria-label="Chinmay Patil">CP</div>
+        </div>
+      </header>`;
+    }
+
+    function mobileBottom() {
+      const nav = [['home','home','Home'],['assignments','list','Tasks'],['planner','calendar','Planner'],['more','menu','More']];
+      return `<nav class="mobile-bottom" aria-label="Mobile navigation">${nav.map(([r,ic,l])=>`<button class="${state.route===r || (r==='assignments'&&state.route==='detail')?'active':''}" onclick="${r==='more'?'state.mobileSidebar=true;render()':`setRoute('${r}')`}">${icons[ic]}<span>${l}</span></button>`).join('')}</nav>`;
+    }
+
+    function homePage() {
+      const filtered = state.assignmentTab==='overdue' ? assignments.filter(a=>a.overdue) : state.assignmentTab==='backlog' ? assignments.filter(a=>a.noDue) : assignments.filter(a=>!a.overdue&&!a.noDue).slice(0,4);
+      return `<div class="main">
+        <div class="page-heading"><div><h2>Good evening, Chinmay.</h2><p>You have one clear priority tonight. CatchUp found time for most of your upcoming work.</p></div><div class="heading-actions"><button class="btn btn-secondary" onclick="toast('Classroom and Calendar refreshed.')">${icon('refresh')}Refresh</button><button class="btn btn-primary" onclick="openModal('buildPlan')">${icon('sparkle')}Build study plan</button></div></div>
+        <div class="dashboard-grid">
+          <div class="dashboard-main">
+            <section class="card hero-card">
+              <div class="hero-top"><div class="hero-label">${icon('sparkle')} Recommended next</div>${priorityBadge('high')}</div>
+              <h2 class="hero-title">Physics Lab Analysis</h2>
+              <div class="course-line">AP Physics · Imported from Google Classroom</div>
+              <div class="hero-meta">
+                <div class="meta-item">${icon('calendarSmall')}Due tomorrow at 11:59 PM</div>
+                <div class="meta-item">${icon('clock')}About 50 minutes</div>
+                <div class="meta-item"><span class="badge badge-neutral">Not scheduled</span></div>
+              </div>
+              <div class="reason-box">${icon('sparkle')}<div><strong>Why this is next</strong><span>It is due soon, needs a longer focused session, and has not been scheduled yet.</span></div></div>
+              <div class="hero-actions"><button class="btn btn-primary" onclick="openAssignment(1)">Start working ${icon('arrow')}</button><button class="btn btn-secondary" onclick="openModal('schedule',{assignmentId:1})">Add to plan</button><button class="btn btn-ghost" onclick="openAssignment(1)">View details</button></div>
+            </section>
+
+            <section class="card card-pad">
+              <div class="section-title"><h3>Important assignments</h3><div class="tabs">
+                ${['upcoming','overdue','backlog'].map(t=>`<button class="tab ${state.assignmentTab===t?'active':''}" onclick="state.assignmentTab='${t}';render()">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}
+              </div></div>
+              <div class="assignment-list">
+                ${filtered.length ? filtered.map(a=>assignmentRow(a)).join('') : `<div class="empty-state"><div class="empty-icon">${icons.check}</div><h3>Nothing here right now</h3><p>This category does not contain any active assignments.</p></div>`}
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="setRoute('assignments')">View all assignments ${icon('arrow')}</button>
+            </section>
+          </div>
+          <aside class="dashboard-side">
+            <section class="card card-pad">
+              <div class="section-title"><h3>Today’s plan</h3><small>4:00–10:00 PM</small></div>
+              <div class="timeline">
+                ${timelineItem('4:00','Soccer practice','Google Calendar · 4:00–5:30 PM','busy',false)}
+                ${timelineItem('6:10','English essay draft','Draft study session · 40 min','study draft',false)}
+                ${timelineItem('7:00','Dinner','Google Calendar · 7:00–7:45 PM','busy',false)}
+                ${timelineItem('8:00','Cold War reading notes','Synced study session · 30 min','study',true)}
+              </div>
+              <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:5px" onclick="setRoute('planner')">Open planner</button>
+            </section>
+            <section class="card alert-card">
+              <div class="alert-head"><div class="alert-icon">${icons.alert}</div><div><h4>Calculus problem set is overdue</h4><p>CatchUp found a 45-minute opening tonight, but it has not been added to your plan.</p><button class="btn btn-sm btn-secondary" onclick="openModal('schedule',{assignmentId:3})">Review options</button></div></div>
+            </section>
+            <section class="card progress-card">
+              <div class="section-title"><h3>This week</h3><small>Quiet progress</small></div>
+              <div class="progress-numbers"><div class="progress-stat"><strong>3</strong><span>tasks finished</span></div><div class="progress-stat"><strong>4</strong><span>study sessions</span></div><div class="progress-stat"><strong>4.2h</strong><span>planned time</span></div></div>
+            </section>
+          </aside>
+        </div>
+      </div>`;
+    }
+
+    function timelineItem(time,title,meta,cls,synced) {
+      return `<div class="timeline-item"><div class="timeline-time">${time}</div><div class="timeline-marker"><span class="timeline-dot" style="background:${cls.includes('study')?'var(--primary)':'var(--border-strong)'}"></span><span class="timeline-line"></span></div><div class="timeline-event ${cls}"><strong>${title}</strong><span>${synced?icons.check:''} ${meta}</span></div></div>`;
+    }
+
+    function assignmentRow(a) {
+      return `<button class="assignment-row" onclick="openAssignment(${a.id})"><div class="assignment-title"><span class="course-chip" style="background:${a.color}"></span><div><strong>${a.title}</strong><small>${a.course} · ${a.minutes} min · ${a.status}</small></div></div><div class="assignment-meta"><span class="due">${a.dueShort}</span>${priorityBadge(a.priority)}</div></button>`;
+    }
+
+    function assignmentsPage() {
+      return `<div class="main">
+        <div class="page-heading"><div><h2>Assignments</h2><p>Active Classroom work, organized by urgency and scheduling status.</p></div><div class="heading-actions"><button class="btn btn-secondary" onclick="toast('Filters reset.')">Clear filters</button><button class="btn btn-primary" onclick="openModal('buildPlan')">${icon('sparkle')}Plan selected work</button></div></div>
+        <div class="toolbar"><div class="toolbar-left"><div class="search">${icons.search}<input id="task-search" placeholder="Search assignments" oninput="filterTaskRows(this.value)" /></div><select class="select"><option>All classes</option><option>AP Physics</option><option>English 11</option><option>Calculus III</option></select><select class="select"><option>All priorities</option><option>High</option><option>Medium</option><option>Low</option></select></div><div class="toolbar-right"><button class="btn btn-secondary">${icon('filter')}More filters</button></div></div>
+        <section class="card assignment-table">
+          <div class="table-head"><div>Assignment</div><div>Due</div><div>Estimate</div><div>Priority</div><div>Status</div><div></div></div>
+          <div id="assignment-rows">
+            ${assignments.map(a=>`<div class="table-row" data-search="${(a.title+' '+a.course).toLowerCase()}" onclick="openAssignment(${a.id})"><div class="table-title"><strong>${a.title}</strong><span>${a.course}</span></div><div class="table-cell">${a.due}</div><div class="table-cell">${a.minutes} min</div><div>${priorityBadge(a.priority)}</div><div class="status-line"><span class="badge ${a.status==='Scheduled'?'badge-success':a.status==='Partially scheduled'?'badge-medium':'badge-neutral'}">${a.status}</span></div><div>${icons.more}</div></div>`).join('')}
+          </div>
+        </section>
+      </div>`;
+    }
+
+    function filterTaskRows(value) {
+      document.querySelectorAll('#assignment-rows .table-row').forEach(row=>row.style.display = row.dataset.search.includes(value.toLowerCase()) ? 'grid' : 'none');
+    }
+
+    function detailPage() {
+      const a = state.selectedAssignment;
+      const scheduled = a.id===2 ? 40 : a.id===4 ? 30 : 0;
+      return `<div class="main">
+        <div class="detail-layout">
+          <div class="dashboard-main">
+            <section class="card detail-header">
+              <button class="detail-back" onclick="setRoute('assignments')">${icons.back} Back to assignments</button>
+              <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start"><div><div class="eyebrow">${a.course}</div><h2>${a.title}</h2></div>${priorityBadge(a.priority)}</div>
+              <div class="hero-meta"><div class="meta-item">${icon('calendarSmall')}${a.due}</div><div class="meta-item">${icon('clock')}${a.minutes} minutes estimated</div><div class="meta-item"><span class="badge badge-neutral">${a.status}</span></div></div>
+              <p class="detail-description">${a.description}</p>
+              <div class="info-grid"><div class="info-item"><span>Submission state</span><strong>Assigned</strong></div><div class="info-item"><span>Priority score</span><strong>${a.score}/100</strong></div><div class="info-item"><span>Source</span><strong>Google Classroom</strong></div></div>
+              <div class="hero-actions" style="margin-top:22px"><button class="btn btn-primary" onclick="toast('Opening Google Classroom assignment…')">${icon('open')}Open in Classroom</button><button class="btn btn-secondary" onclick="openModal('estimate',{assignmentId:${a.id}})">${icon('edit')}Edit estimate</button><button class="btn btn-secondary" onclick="openModal('schedule',{assignmentId:${a.id}})">${icon('plus')}Add study time</button></div>
+            </section>
+            <section class="card card-pad"><div class="section-title"><h3>Study plan</h3><small>${scheduled} of ${a.minutes} minutes scheduled</small></div><div class="progress-track"><div class="progress-fill" style="width:${Math.min(100,(scheduled/a.minutes)*100)}%"></div></div>${scheduled ? `<div class="session-list"><div class="session-item"><div><strong>Tuesday · 6:10–6:50 PM</strong><span>Draft study session · ${scheduled} minutes</span></div><button class="btn btn-ghost btn-sm" onclick="openModal('schedule',{assignmentId:${a.id}})">${icon('edit')} Edit</button></div></div>` : `<div class="empty-state" style="padding:34px 20px"><div class="empty-icon">${icons.calendar}</div><h3>No study time planned</h3><p>CatchUp can find openings before this assignment’s deadline.</p><button class="btn btn-primary" onclick="openModal('schedule',{assignmentId:${a.id}})">Find study time</button></div>`}</section>
+          </div>
+          <aside class="dashboard-side">
+            <section class="card card-pad"><div class="section-title"><h3>Why CatchUp ranked this here</h3></div><div class="reason-list">${a.reasons.map(r=>`<div class="reason-item"><div class="reason-check">${icons.check}</div><div><strong>${r}</strong><span>This factor contributes to the current priority.</span></div></div>`).join('')}</div></section>
+            <section class="card card-pad"><div class="section-title"><h3>Suggested openings</h3><small>Before deadline</small></div><div class="slot-list"><button class="slot" onclick="openModal('schedule',{assignmentId:${a.id},time:'Today · 8:45 PM'})"><div><strong>Today · 8:45 PM</strong><span>45-minute opening</span></div>${icons.arrow}</button><button class="slot" onclick="openModal('schedule',{assignmentId:${a.id},time:'Tomorrow · 4:10 PM'})"><div><strong>Tomorrow · 4:10 PM</strong><span>50-minute opening</span></div>${icons.arrow}</button></div></section>
+          </aside>
+        </div>
+      </div>`;
+    }
+
+    function plannerPage() {
+      return `<div class="main">
+        <div class="page-heading"><div><h2>Plan around real life.</h2><p>Calendar commitments are read-only. CatchUp study sessions remain editable drafts until you approve them.</p></div><div class="heading-actions"><button class="btn btn-secondary" onclick="openModal('manualSession')">${icon('plus')}Add draft</button><button class="btn btn-primary" onclick="openModal('buildPlan')">${icon('sparkle')}Build study plan</button></div></div>
+        <div class="planner-shell">
+          <aside class="card planner-side"><div class="section-title"><h3>July 2026</h3></div><div class="mini-cal">${['S','M','T','W','T','F','S'].map(d=>`<span>${d}</span>`).join('')}${[26,27,28,29,30,31,1,2,3,4,5,6,7,8].map(n=>`<button class="${n===28?'active':''}">${n}</button>`).join('')}</div><div class="filter-list"><label class="check-row"><input type="checkbox" checked /> Google Calendar</label><label class="check-row"><input type="checkbox" checked /> CatchUp drafts</label><label class="check-row"><input type="checkbox" checked /> Synced study sessions</label></div><div class="section-title" style="margin-top:22px;margin-bottom:8px"><h3>Still needs time</h3><small>3</small></div><div class="unscheduled-list"><div class="unscheduled-card" onclick="openModal('schedule',{assignmentId:1})"><strong>Physics Lab Analysis</strong><span>50 min · Due tomorrow</span></div><div class="unscheduled-card" onclick="openModal('schedule',{assignmentId:3})"><strong>Chapter 7 Problem Set</strong><span>45 min · Overdue</span></div><div class="unscheduled-card" onclick="openModal('schedule',{assignmentId:5})"><strong>Vocabulary Practice</strong><span>20 min · Due Monday</span></div></div></aside>
+          <section class="card calendar-card"><div class="calendar-toolbar"><div><h3>July 28–30</h3><span class="small muted">Three-day view</span></div><div class="tabs"><button class="tab">Day</button><button class="tab active">3 days</button><button class="tab">Week</button></div></div>${calendarGrid()}</section>
+          <aside><section class="card context-card"><div class="badge badge-draft">Draft selected</div><h3 style="margin-top:10px">English essay draft</h3><p>Tuesday, 6:10–6:50 PM · 40 minutes</p><div class="reason-box" style="margin:12px 0"><div><strong>Why here</strong><span>This is your longest open block before dinner.</span></div></div><button class="btn btn-secondary btn-sm" style="width:100%" onclick="openModal('schedule',{assignmentId:2})">Edit session</button></section><section class="card context-card"><h3>Plan status</h3><p>Five assignments are fully scheduled. Physics and Calculus still need time.</p><button class="btn btn-primary btn-sm" style="width:100%" onclick="setRoute('review')">Review 7 drafts</button></section></aside>
+        </div>
+      </div>`;
+    }
+
+    function calendarGrid() {
+      const labels = [4,5,6,7,8,9,10];
+      const top = h=>54+(h-4)*90;
+      const event=(title,time,start,dur,cls)=>`<div class="cal-event ${cls}" style="top:${top(start)}px;height:${dur*1.5}px"><strong>${title}</strong><span>${time}</span></div>`;
+      return `<div class="calendar-grid"><div class="cal-time-col"><div class="cal-head">TIME</div>${labels.map(h=>`<span class="time-label" style="top:${top(h)}px">${h>6?h-6:h}:00</span>`).join('')}</div>
+        <div class="cal-day"><div class="cal-head"><strong>Tue 28</strong><span>Today</span></div>${labels.map(h=>`<span class="hour-line" style="top:${top(h)}px"></span>`).join('')}${event('Soccer practice','4:00–5:30 PM',4,90,'busy')}${event('English essay draft','6:10–6:50 PM',6.17,40,'study draft')}${event('Dinner','7:00–7:45 PM',7,45,'busy')}${event('Cold War notes','8:00–8:30 PM',8,30,'study')}<span class="now-line" style="top:${top(6.62)}px"></span></div>
+        <div class="cal-day"><div class="cal-head"><strong>Wed 29</strong><span>Tomorrow</span></div>${labels.map(h=>`<span class="hour-line" style="top:${top(h)}px"></span>`).join('')}${event('Robotics meeting','4:30–6:00 PM',4.5,90,'busy')}${event('Physics Lab Analysis','6:20–7:10 PM',6.33,50,'study draft')}${event('Family event','8:00–9:00 PM',8,60,'busy')}</div>
+        <div class="cal-day"><div class="cal-head"><strong>Thu 30</strong><span></span></div>${labels.map(h=>`<span class="hour-line" style="top:${top(h)}px"></span>`).join('')}${event('Chess tutoring','5:00–6:00 PM',5,60,'busy')}${event('Essay revision','6:15–6:55 PM',6.25,40,'study draft')}${event('Vocabulary practice','8:15–8:35 PM',8.25,20,'study draft')}</div></div>`;
+    }
+
+    function classesPage() {
+      return `<div class="main"><div class="page-heading"><div><h2>Tracked classes</h2><p>Choose which active Google Classroom courses should contribute assignments to CatchUp.</p></div><div class="heading-actions"><button class="btn btn-secondary" onclick="toast('Class list refreshed from Google Classroom.')">${icon('refresh')}Refresh</button><button class="btn btn-primary" onclick="state.classes.forEach(c=>c.tracked=true);render();toast('All active classes are now tracked.')">Track all active</button></div></div><div class="class-grid">${state.classes.map((c,i)=>`<section class="card class-card"><div class="class-color" style="background:${c.color}">${c.initials}</div><h3>${c.name}</h3><p>${c.teacher} · ${c.section}</p><div class="class-stats"><span>${c.count?`${c.count} active assignment${c.count===1?'':'s'}`:'No active assignments'}</span><label class="switch" aria-label="Track ${c.name}"><input type="checkbox" ${c.tracked?'checked':''} onchange="state.classes[${i}].tracked=this.checked;toast(this.checked?'${c.name} is now tracked.':'${c.name} will stop importing new work.');render()"><span class="slider"></span></label></div></section>`).join('')}</div></div>`;
+    }
+
+    function reviewPage() {
+      const sessions = [
+        ['Tuesday','6:10–6:50 PM','English essay draft','40 min · Longest opening before dinner'],
+        ['Tuesday','8:00–8:30 PM','Cold War reading notes','30 min · Due Thursday morning'],
+        ['Tuesday','8:45–9:30 PM','Chapter 7 Problem Set','45 min · Overdue work scheduled ASAP'],
+        ['Wednesday','6:20–7:10 PM','Physics Lab Analysis','50 min · Complete block before deadline'],
+        ['Thursday','6:15–6:55 PM','English essay revision','40 min · Finishes remaining estimate'],
+        ['Thursday','8:15–8:35 PM','Vocabulary Practice','20 min · Short opening used efficiently']
+      ];
+      const grouped = ['Tuesday','Wednesday','Thursday'].map(day=>`<section class="card day-group"><h3>${day}, July ${day==='Tuesday'?'28':day==='Wednesday'?'29':'30'}</h3>${sessions.filter(s=>s[0]===day).map((s,i)=>`<div class="review-session"><input type="checkbox" checked aria-label="Approve ${s[2]}"/><div class="review-time">${s[1]}</div><div><strong>${s[2]}</strong><span>${s[3]}</span></div><button class="btn btn-ghost btn-sm" onclick="openModal('schedule',{assignmentId:${i+1}})">${icon('edit')} Edit</button></div>`).join('')}</section>`).join('');
+      return `<div class="main"><div class="page-heading"><div><h2>Review your study plan</h2><p>Nothing will be added to Google Calendar until you approve it.</p></div><div class="heading-actions"><button class="btn btn-secondary" onclick="setRoute('planner')">Back to planner</button></div></div><div class="review-summary"><div class="card summary-card"><strong>6</strong><span>assignments included</span></div><div class="card summary-card"><strong>7</strong><span>study sessions</span></div><div class="card summary-card"><strong>4h 25m</strong><span>total study time</span></div><div class="card summary-card"><strong>1</strong><span>issue to review</span></div></div><div class="review-layout"><div>${grouped}<section class="issue-box"><strong>Physics lab has 15 minutes of buffer</strong><p>The plan fits before the deadline, but there is little room if the assignment takes longer than estimated.</p><button class="btn btn-secondary btn-sm" onclick="openModal('estimate',{assignmentId:1})">Review estimate</button></section></div><aside class="sticky-review"><section class="card card-pad"><div class="section-title"><h3>Before you approve</h3></div><p class="muted small">CatchUp will add selected sessions to your “CatchUp Study” calendar. Existing commitments will not be changed.</p><div class="reason-list"><div class="reason-item"><div class="reason-check">${icons.check}</div><div><strong>7 sessions selected</strong><span>You can uncheck any session.</span></div></div><div class="reason-item"><div class="reason-check">${icons.lock}</div><div><strong>Calendar commitments stay read-only</strong><span>Only CatchUp drafts will be added.</span></div></div></div><button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="openModal('sync')">Add approved sessions</button><button class="btn btn-ghost" style="width:100%;margin-top:6px" onclick="toast('Draft plan saved without syncing.')">Save as drafts</button></section></aside></div></div>`;
+    }
+
+    function recoveryPage() {
+      const steps = ['Review work','Set limits','Review plan'];
+      let panel='';
+      if(state.recoveryStep===1) panel=`<section class="card recovery-panel"><h3>Choose what belongs in the recovery plan</h3><p>Overdue and near-term assignments are selected. Backlog work stays out unless you add it.</p>${assignments.filter(a=>a.overdue||a.priority==='high').map(a=>`<label class="selectable-task"><input type="checkbox" checked /><div><strong>${a.title}</strong><span>${a.course} · ${a.due} · ${a.minutes} minutes</span></div>${priorityBadge(a.priority)}</label>`).join('')}<label class="selectable-task"><input type="checkbox"/><div><strong>Optional Review Packet</strong><span>AP Chemistry · No due date · 35 minutes</span></div><span class="badge badge-low">Backlog</span></label><div class="recovery-actions"><span class="small muted">3 assignments selected · 2h 55m estimated</span><button class="btn btn-primary" onclick="state.recoveryStep=2;render()">Set realistic limits ${icon('arrow')}</button></div></section>`;
+      if(state.recoveryStep===2) panel=`<section class="card recovery-panel"><h3>How much work is realistic?</h3><p>CatchUp will not schedule more than this on a school night.</p><div class="option-grid">${[['1','Up to 1 hour','Light recovery pace'],['2','Up to 2 hours','Balanced pace'],['3','Up to 3 hours','Faster recovery pace']].map(o=>`<button class="option-card ${state.workload===o[0]?'active':''}" onclick="state.workload='${o[0]}';render()"><strong>${o[1]}</strong><span>${o[2]}</span></button>`).join('')}</div><div class="setting-row" style="margin-top:14px"><div class="setting-copy"><strong>Recovery window</strong><span>Use tonight through Friday.</span></div><select class="select"><option>Tonight–Friday</option><option>Tonight–Sunday</option></select></div><div class="setting-row"><div class="setting-copy"><strong>Include weekend time</strong><span>Saturday and Sunday are available.</span></div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div><div class="recovery-actions"><button class="btn btn-ghost" onclick="state.recoveryStep=1;render()">${icon('back')}Back</button><button class="btn btn-primary" onclick="state.recoveryStep=3;render();toast('Recovery plan generated.')">${icon('sparkle')}Generate plan</button></div></section>`;
+      if(state.recoveryStep===3) panel=`<section class="card recovery-panel"><h3>A realistic three-day recovery plan</h3><p>This plan clears the overdue assignment tonight and protects enough time for upcoming deadlines.</p><div class="reason-list"><div class="reason-item"><div class="reason-check">1</div><div><strong>Tonight · Chapter 7 Problem Set</strong><span>8:45–9:30 PM · Overdue work scheduled first</span></div></div><div class="reason-item"><div class="reason-check">2</div><div><strong>Wednesday · Physics Lab Analysis</strong><span>6:20–7:10 PM · Complete before deadline</span></div></div><div class="reason-item"><div class="reason-check">3</div><div><strong>Thursday · Finish English essay</strong><span>Two shorter sessions to reduce fatigue</span></div></div></div><div class="issue-box"><strong>One limitation remains</strong><p>The English draft has only 10 minutes of buffer before Friday. Consider starting early if possible.</p></div><div class="recovery-actions"><button class="btn btn-ghost" onclick="state.recoveryStep=2;render()">${icon('back')}Adjust limits</button><button class="btn btn-primary" onclick="setRoute('review')">Review draft sessions ${icon('arrow')}</button></div></section>`;
+      return `<div class="main"><div class="recovery-wrap"><section class="card recovery-hero"><span class="badge badge-draft">Guided recovery</span><h2 style="margin-top:12px">Turn a stressful list into a workable plan.</h2><p>Catch-Up Mode focuses on overdue and near-term work, then builds a schedule that respects your actual calendar and daily workload limit.</p><div class="stepper">${steps.map((s,i)=>`${i?'<span class="step-line"></span>':''}<div class="step ${state.recoveryStep===i+1?'active':state.recoveryStep>i+1?'done':''}"><span class="step-num">${state.recoveryStep>i+1?icons.check:i+1}</span><span>${s}</span></div>`).join('')}</div></section>${panel}</div></div>`;
+    }
+
+    function settingsPage() {
+      return `<div class="main"><div class="page-heading"><div><h2>Settings</h2><p>Control integrations, study availability, and how CatchUp creates draft plans.</p></div><div class="heading-actions"><button class="btn btn-primary" onclick="toast('Preferences saved.')">Save changes</button></div></div><div class="settings-layout"><aside class="card settings-nav"><button class="active">Study preferences</button><button>Integrations</button><button>Tracked classes</button><button>Calendar</button><button>Notifications</button><button>Data & privacy</button></aside><div><section class="card settings-card"><h3>Study availability</h3><p>CatchUp searches for free time only within these hours.</p><div class="setting-row"><div class="setting-copy"><strong>School-night study window</strong><span>Monday through Friday</span></div><div class="field"><input type="time" value="16:00"/><span>to</span><input type="time" value="22:00"/></div></div><div class="setting-row"><div class="setting-copy"><strong>Include weekends</strong><span>Allow plans on Saturday and Sunday.</span></div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div><div class="setting-row"><div class="setting-copy"><strong>Maximum school-night workload</strong><span>Protect against unrealistic plans.</span></div><select class="select"><option>2 hours</option><option>1 hour</option><option>3 hours</option></select></div></section><section class="card settings-card"><h3>Study sessions</h3><p>These defaults can still be changed during plan review.</p><div class="setting-row"><div class="setting-copy"><strong>Maximum session length</strong><span>Long assignments can be split automatically.</span></div><select class="select"><option>60 minutes</option><option>45 minutes</option><option>90 minutes</option></select></div><div class="setting-row"><div class="setting-copy"><strong>Minimum break</strong><span>Time between CatchUp study blocks.</span></div><select class="select"><option>10 minutes</option><option>15 minutes</option><option>No minimum</option></select></div><div class="setting-row"><div class="setting-copy"><strong>Schedule overdue work ASAP</strong><span>Use the earliest suitable opening.</span></div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div></section><section class="card settings-card"><h3>Google connections</h3><p>CatchUp never adds Calendar events without review.</p><div class="setting-row"><div class="setting-copy"><strong>Google Classroom</strong><span>Connected as chinmay@example.com</span></div><span class="badge badge-success">Connected</span></div><div class="setting-row"><div class="setting-copy"><strong>Google Calendar</strong><span>Reading commitments and adding approved sessions</span></div><span class="badge badge-success">Connected</span></div></section></div></div></div>`;
+    }
+
+    function modal() {
+      if(!state.modal) return '';
+      const {type,payload} = state.modal;
+      const a = assignments.find(x=>x.id===Number(payload.assignmentId)) || assignments[0];
+      if(type==='buildPlan') return `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h3>Build a study plan</h3><button class="icon-button" onclick="closeModal()">${icons.x}</button></div><div class="modal-body"><p>CatchUp will check your free time from tonight through Friday and create editable draft sessions.</p><div class="modal-form"><label>Study window<select><option>Tonight through Friday</option><option>Next 7 days</option></select></label><label>Maximum study time per day<select><option>2 hours</option><option>1 hour</option><option>3 hours</option></select></label><label><span style="display:flex;align-items:center;gap:8px"><input type="checkbox" checked /> Split large assignments across sessions</span></label></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="closeModal();setRoute('review');toast('Draft plan created. Nothing has been synced.')">${icon('sparkle')}Create drafts</button></div></div></div>`;
+      if(type==='schedule'||type==='manualSession') return `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h3>${type==='manualSession'?'Add draft session':'Schedule '+a.title}</h3><button class="icon-button" onclick="closeModal()">${icons.x}</button></div><div class="modal-body"><div class="modal-form"><label>Assignment<select>${assignments.map(x=>`<option ${x.id===a.id?'selected':''}>${x.title}</option>`).join('')}</select></label><label>Date<input type="date" value="2026-07-28" /></label><label>Start time<input type="time" value="20:45" /></label><label>Duration<select><option>${Math.min(a.minutes,45)} minutes</option><option>${a.minutes} minutes</option><option>30 minutes</option></select></label><div class="reason-box" style="margin:3px 0"><div><strong>Draft only</strong><span>This session will not sync until you approve the study plan.</span></div></div></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="closeModal();toast('Draft study session saved.')">Save draft</button></div></div></div>`;
+      if(type==='estimate') return `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h3>Edit time estimate</h3><button class="icon-button" onclick="closeModal()">${icons.x}</button></div><div class="modal-body"><p>How long do you realistically expect <strong>${a.title}</strong> to take?</p><div class="modal-form"><label>Estimated minutes<input type="number" value="${a.minutes}" min="5" step="5" /></label></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="closeModal();toast('Estimate updated and priority recalculated.')">Save estimate</button></div></div></div>`;
+      if(type==='sync') return `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><h3>Add 7 sessions to Google Calendar?</h3><button class="icon-button" onclick="closeModal()">${icons.x}</button></div><div class="modal-body"><p>The selected sessions will be added to the <strong>CatchUp Study</strong> calendar between July 28 and July 30.</p><div class="reason-list"><div class="reason-item"><div class="reason-check">${icons.check}</div><div><strong>7 draft sessions</strong><span>4 hours and 25 minutes total</span></div></div><div class="reason-item"><div class="reason-check">${icons.lock}</div><div><strong>Existing events unchanged</strong><span>Calendar commitments stay read-only.</span></div></div></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Keep as drafts</button><button class="btn btn-primary" onclick="closeModal();setRoute('home');toast('7 sessions added to Google Calendar.')">Add to Calendar</button></div></div></div>`;
+      return '';
+    }
+
+    function render() {
+      const pages = { home:homePage, assignments:assignmentsPage, detail:detailPage, planner:plannerPage, classes:classesPage, review:reviewPage, recovery:recoveryPage, settings:settingsPage };
+      document.getElementById('app').innerHTML = `<div class="shell">${sidebar()}<div class="content-wrap">${topbar()}${(pages[state.route]||homePage)()}</div>${mobileBottom()}</div>${modal()}`;
+    }
+
+    window.state = state; window.render = render; window.setRoute = setRoute; window.openAssignment = openAssignment; window.openModal = openModal; window.closeModal = closeModal; window.toast = toast; window.filterTaskRows = filterTaskRows;
+    render();
+  </script>
+</body>
+</html>
