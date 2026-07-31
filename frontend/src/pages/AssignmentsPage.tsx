@@ -26,7 +26,6 @@ export function AssignmentsPage({ app }: { app: AppContextValue }) {
           <select className="select" value={course} onChange={(event) => setCourse(event.target.value)}><option value="all">All classes</option>{app.data.courses.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select>
           <select className="select" value={priority} onChange={(event) => setPriority(event.target.value as PriorityLevel | "all")}><option value="all">All priorities</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
         </div>
-        <div className="toolbar-right"><button className="btn btn-secondary" onClick={() => app.toast("More filters will connect to backend search later.")}>More filters</button></div>
       </div>
       <AssignmentTable assignments={assignments} />
     </main>

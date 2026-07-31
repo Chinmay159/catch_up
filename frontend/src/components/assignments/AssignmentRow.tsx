@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { Assignment } from "../../types";
 import { PriorityBadge } from "../common/Badge";
+import { formatEstimate } from "../../utils/estimates";
 
 export function AssignmentRow({ assignment }: { assignment: Assignment }) {
   return (
@@ -9,7 +10,7 @@ export function AssignmentRow({ assignment }: { assignment: Assignment }) {
         <span className="course-chip" style={{ background: assignment.color }} />
         <div>
           <strong>{assignment.title}</strong>
-          <small>{assignment.courseName} · {assignment.estimatedMinutes} min · {assignment.status}</small>
+          <small>{assignment.courseName} · {formatEstimate(assignment.estimatedMinutes)} · {assignment.status}</small>
         </div>
       </div>
       <div className="assignment-meta">

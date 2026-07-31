@@ -11,7 +11,7 @@ const navItems = [
   ["/catch-up", "↻", "Catch-Up Mode"],
 ] as const;
 
-export function AppLayout({ children }: { children: ReactNode }) {
+export function AppLayout({ children, googleConnected, onConnectGoogle }: { children: ReactNode; googleConnected: boolean; onConnectGoogle: () => Promise<void> }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const title = usePageTitle();
 
@@ -28,14 +28,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {navItems.map(([to, icon, label]) => <NavButton key={to} to={to} icon={icon} label={label} />)}
         </nav>
         <div className="nav-spacer" />
-        <div className="sidebar-note">
-          <strong>3 tasks need attention</strong>
-          <p>One is overdue and two still need study time.</p>
-          <Link className="btn btn-soft btn-sm" to="/catch-up" onClick={() => setMobileOpen(false)}>Make a recovery plan</Link>
-        </div>
         <nav className="nav" onClick={() => setMobileOpen(false)}>
           <NavButton to="/settings" icon="⚙" label="Settings" />
-          <button className="nav-button" type="button"><span className="nav-icon">?</span><span>Help</span></button>
         </nav>
       </aside>
       <div className="content-wrap">
@@ -43,13 +37,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="topbar-title">
             <button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileOpen(true)}>☰</button>
             <div>
-              <div className="eyebrow">Tuesday, July 28</div>
               <h1 className="page-title">{title}</h1>
             </div>
           </div>
           <div className="top-actions">
-            <div className="sync-pill"><span className="sync-dot" /><span>Google connected</span><span>· Synced 8 min ago</span></div>
-            <div className="avatar" aria-label="Chinmay Patil">CP</div>
+            {googleConnected ? (
+              <div className="sync-pill"><span className="sync-dot" /><span>Google connected</span></div>
+            ) : (
+              <button className="btn btn-primary btn-sm" onClick={() => void onConnectGoogle()}>Connect Google</button>
+            )}
           </div>
         </header>
         {children}

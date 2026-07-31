@@ -33,7 +33,8 @@ export interface Assignment {
   dueAt: string | null;
   dueLabel: string;
   dueShort: string;
-  estimatedMinutes: number;
+  estimatedMinutes: number | null;
+  estimateSource: "student" | "unknown";
   priority: PriorityLevel;
   priorityScore: number;
   status: AssignmentStatus;
@@ -54,6 +55,20 @@ export interface CalendarEvent {
   startAt: string;
   endAt: string;
   description?: string;
+  htmlLink?: string;
+}
+
+export interface FreeWindow {
+  id: string;
+  startAt: string;
+  endAt: string;
+  durationMinutes: number;
+}
+
+export interface AvailabilityWarning {
+  code: string;
+  message: string;
+  calendarId?: string;
 }
 
 export interface StudySession {
@@ -68,23 +83,41 @@ export interface StudySession {
   durationMinutes: number;
   reason: string;
   googleCalendarEventId?: string;
+  sequenceNumber?: number;
+  totalAssignmentSessions?: number;
 }
 
 export interface SchedulingFailure {
   assignmentId: string;
-  title: string;
+  code?: string;
+  title?: string;
   reason: string;
+  requestedMinutes?: number | null;
+  scheduledMinutes?: number;
+  unscheduledMinutes?: number | null;
+  suggestedActions?: string[];
 }
 
 export interface UserPreferences {
-  schoolNightStart: string;
-  schoolNightEnd: string;
-  includeWeekends: boolean;
-  maxSchoolNightMinutes: number;
-  maxSessionMinutes: number;
-  minBreakMinutes: number;
-  scheduleOverdueAsap: boolean;
+  userId: string;
+  timezone: string;
+  dailyWindows: Array<{
+    weekday: number;
+    enabled: boolean;
+    startTime: string;
+    endTime: string;
+    maximumDailyStudyMinutes: number;
+  }>;
+  minimumSessionMinutes: number;
+  maximumSessionMinutes: number;
+  breakMinutes: number;
+  maximumDailyStudyMinutes: number;
+  allowAssignmentSplitting: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
+
+export type StudyPreferencesSource = "saved" | "default";
 
 export interface DashboardData {
   recommendedAssignmentId: string;
@@ -94,6 +127,7 @@ export interface DashboardData {
   studySessions: StudySession[];
   failures: SchedulingFailure[];
   preferences: UserPreferences;
+  preferencesSource: StudyPreferencesSource;
 }
 
 export type ModalState =

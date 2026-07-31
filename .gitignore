@@ -1,2 +1,9 @@
 testing
 prototype
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.catchup/
+*.sqlite
+*.sqlite3
+*.db

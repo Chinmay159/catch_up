@@ -1,22 +1,39 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
 import type { AppContextValue } from "../App";
 import { PriorityBadge } from "../components/common/Badge";
-
-const steps = ["Review work", "Set limits", "Review plan"];
+import { EmptyState } from "../components/common/EmptyState";
+import { formatEstimateLong } from "../utils/estimates";
 
 export function CatchUpModePage({ app }: { app: AppContextValue }) {
-  const [step, setStep] = useState(1);
-  const [workload, setWorkload] = useState("2");
   const recoveryAssignments = app.data.assignments.filter((assignment) => assignment.overdue || assignment.priority === "high");
 
   return (
     <main className="main">
       <div className="recovery-wrap">
-        <section className="card recovery-hero"><span className="badge badge-draft">Guided recovery</span><h2>Turn a stressful list into a workable plan.</h2><p>Catch-Up Mode focuses on overdue and near-term work, then builds a schedule that respects your actual calendar and daily workload limit.</p><div className="stepper">{steps.map((label, index) => <div className={`step ${step === index + 1 ? "active" : step > index + 1 ? "done" : ""}`} key={label}><span className="step-num">{step > index + 1 ? "✓" : index + 1}</span><span>{label}</span>{index < steps.length - 1 && <span className="step-line" />}</div>)}</div></section>
-        {step === 1 && <section className="card recovery-panel"><h3>Choose what belongs in the recovery plan</h3><p>Overdue and near-term assignments are selected. Backlog work stays out unless you add it.</p>{recoveryAssignments.map((assignment) => <label className="selectable-task" key={assignment.id}><input type="checkbox" defaultChecked /><div><strong>{assignment.title}</strong><span>{assignment.courseName} · {assignment.dueLabel} · {assignment.estimatedMinutes} minutes</span></div><PriorityBadge priority={assignment.priority} /></label>)}<label className="selectable-task"><input type="checkbox" /><div><strong>Optional Review Packet</strong><span>AP Chemistry · No due date · 35 minutes</span></div><span className="badge badge-low">Backlog</span></label><div className="recovery-actions"><span className="small muted">3 assignments selected · 2h 55m estimated</span><button className="btn btn-primary" onClick={() => setStep(2)}>Set realistic limits →</button></div></section>}
-        {step === 2 && <section className="card recovery-panel"><h3>How much work is realistic?</h3><p>CatchUp will not schedule more than this on a school night.</p><div className="option-grid">{[["1", "Up to 1 hour", "Light recovery pace"], ["2", "Up to 2 hours", "Balanced pace"], ["3", "Up to 3 hours", "Faster recovery pace"]].map(([value, title, copy]) => <button className={`option-card ${workload === value ? "active" : ""}`} key={value} onClick={() => setWorkload(value)}><strong>{title}</strong><span>{copy}</span></button>)}</div><div className="setting-row recovery-setting"><div className="setting-copy"><strong>Recovery window</strong><span>Use tonight through Friday.</span></div><select className="select"><option>Tonight-Friday</option><option>Tonight-Sunday</option></select></div><div className="setting-row"><div className="setting-copy"><strong>Include weekend time</strong><span>Saturday and Sunday are available.</span></div><label className="switch"><input type="checkbox" defaultChecked /><span className="slider" /></label></div><div className="recovery-actions"><button className="btn btn-ghost" onClick={() => setStep(1)}>← Back</button><button className="btn btn-primary" onClick={() => { setStep(3); app.toast("Recovery plan generated."); }}>Generate plan</button></div></section>}
-        {step === 3 && <section className="card recovery-panel"><h3>A realistic three-day recovery plan</h3><p>This plan clears the overdue assignment tonight and protects enough time for upcoming deadlines.</p><div className="reason-list"><div className="reason-item"><div className="reason-check">1</div><div><strong>Tonight · Chapter 7 Problem Set</strong><span>8:45-9:30 PM · Overdue work scheduled first</span></div></div><div className="reason-item"><div className="reason-check">2</div><div><strong>Wednesday · Physics Lab Analysis</strong><span>6:20-7:10 PM · Complete before deadline</span></div></div><div className="reason-item"><div className="reason-check">3</div><div><strong>Thursday · Finish English essay</strong><span>Two shorter sessions to reduce fatigue</span></div></div></div><div className="issue-box"><strong>One limitation remains</strong><p>The English draft has only 10 minutes of buffer before Friday. Consider starting early if possible.</p></div><div className="recovery-actions"><button className="btn btn-ghost" onClick={() => setStep(2)}>← Adjust limits</button><Link className="btn btn-primary" to="/planner/review">Review draft sessions →</Link></div></section>}
+        <section className="card recovery-hero">
+          <span className="badge badge-draft">Guided recovery</span>
+          <h2>Catch-Up Mode</h2>
+          <p>Overdue and high-priority assignments appear here when CatchUp has active Classroom work to recover.</p>
+        </section>
+        <section className="card recovery-panel">
+          <h3>Recovery work</h3>
+          {recoveryAssignments.length ? (
+            <>
+              {recoveryAssignments.map((assignment) => (
+                <label className="selectable-task" key={assignment.id}>
+                  <input type="checkbox" defaultChecked />
+                  <div><strong>{assignment.title}</strong><span>{assignment.courseName} · {assignment.dueLabel} · {formatEstimateLong(assignment.estimatedMinutes)}</span></div>
+                  <PriorityBadge priority={assignment.priority} />
+                </label>
+              ))}
+              <div className="recovery-actions">
+                <span className="small muted">{recoveryAssignments.length} assignment{recoveryAssignments.length === 1 ? "" : "s"} selected</span>
+                <button className="btn btn-primary" onClick={() => app.openModal({ type: "buildPlan" })}>Build study plan</button>
+              </div>
+            </>
+          ) : (
+            <EmptyState title="No recovery work" copy="Overdue and high-priority assignments will appear here after Classroom sync." />
+          )}
+        </section>
       </div>
     </main>
   );

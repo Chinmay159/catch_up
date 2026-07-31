@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { catchupService } from "./services/catchupService";
-import type { Assignment, Course, DashboardData, ModalState, StudySession, UserPreferences } from "./types";
+import type { Assignment, Course, DashboardData, ModalState, SchedulingFailure, StudyPreferencesSource, StudySession, UserPreferences } from "./types";
 import { AssignmentsPage } from "./pages/AssignmentsPage";
 import { AssignmentDetailPage } from "./pages/AssignmentDetailPage";
 import { ClassesPage } from "./pages/ClassesPage";
@@ -17,25 +17,36 @@ import { AppLayout } from "./layouts/AppLayout";
 export interface AppContextValue {
   data: DashboardData;
   selectedAssignment?: Assignment;
+  googleConnected: boolean;
   selectedSessionIds: string[];
+  plannerFocusDate?: string;
+  highlightedSessionIds: string[];
   setSelectedSessionIds: (ids: string[]) => void;
+  focusPlannerSessions: (sessionIds: string[], focusDate?: string) => void;
   openModal: (modal: ModalState) => void;
   closeModal: () => void;
   toast: (message: string) => void;
   refresh: () => Promise<void>;
+  connectGoogle: () => Promise<void>;
   updateCourses: (courses: Course[]) => void;
   updateAssignments: (assignments: Assignment[]) => void;
   updateSessions: (sessions: StudySession[]) => void;
-  updatePreferences: (preferences: UserPreferences) => void;
+  updateFailures: (failures: SchedulingFailure[]) => void;
+  updatePreferences: (preferences: UserPreferences, source?: StudyPreferencesSource) => void;
 }
 
 export function App() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
+  const [googleConnected, setGoogleConnected] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string }>>([]);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
+  const [plannerFocusDate, setPlannerFocusDate] = useState<string | undefined>();
+  const [highlightedSessionIds, setHighlightedSessionIds] = useState<string[]>([]);
 
   async function refresh() {
+    const status = await catchupService.getAuthStatus();
+    setGoogleConnected(status.googleConnected);
     const dashboard = await catchupService.getDashboard();
     setData(dashboard);
     setSelectedSessionIds(dashboard.studySessions.filter((session) => session.status === "draft").map((session) => session.id));
@@ -51,6 +62,19 @@ export function App() {
     window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 2800);
   }
 
+  async function connectGoogle() {
+    await catchupService.connectGoogle();
+    setGoogleConnected(true);
+    await refresh();
+    toast("Google Classroom connected.");
+  }
+
+  function focusPlannerSessions(sessionIds: string[], focusDate?: string) {
+    setHighlightedSessionIds(sessionIds);
+    setPlannerFocusDate(focusDate);
+    window.setTimeout(() => setHighlightedSessionIds([]), 3200);
+  }
+
   if (!data) {
     return (
       <main className="loading-screen">
@@ -62,21 +86,27 @@ export function App() {
 
   const context: AppContextValue = {
     data,
+    googleConnected,
     selectedSessionIds,
+    plannerFocusDate,
+    highlightedSessionIds,
     setSelectedSessionIds,
+    focusPlannerSessions,
     openModal: setModal,
     closeModal: () => setModal(null),
     toast,
     refresh,
+    connectGoogle,
     updateCourses: (courses) => setData((current) => current ? { ...current, courses } : current),
     updateAssignments: (assignments) => setData((current) => current ? { ...current, assignments } : current),
     updateSessions: (studySessions) => setData((current) => current ? { ...current, studySessions } : current),
-    updatePreferences: (preferences) => setData((current) => current ? { ...current, preferences } : current),
+    updateFailures: (failures) => setData((current) => current ? { ...current, failures } : current),
+    updatePreferences: (preferences, source) => setData((current) => current ? { ...current, preferences, preferencesSource: source ?? current.preferencesSource } : current),
   };
 
   return (
     <>
-      <AppLayout>
+      <AppLayout googleConnected={googleConnected} onConnectGoogle={connectGoogle}>
         <Routes>
           <Route path="/" element={<HomePage app={context} />} />
           <Route path="/assignments" element={<AssignmentsPage app={context} />} />
