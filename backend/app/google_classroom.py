@@ -3,6 +3,7 @@ from datetime import date, time
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from .database import AssignmentEstimateRecord
 from .models import AssignmentInfo, Assignments, ClassInfo, ClassList
 
 
@@ -66,8 +67,13 @@ def get_my_submission(classroom, course_id: str, coursework_id: str) -> dict | N
     return submissions[0] if submissions else None
 
 
-def parse_assignments(classroom, classes: ClassList) -> Assignments:
+def parse_assignments(
+    classroom,
+    classes: ClassList,
+    student_estimates: dict[tuple[str, str], AssignmentEstimateRecord] | None = None,
+) -> Assignments:
     assignment_list = []
+    student_estimates = student_estimates or {}
 
     for class_info in classes.classes:
         try:
@@ -104,13 +110,16 @@ def parse_assignments(classroom, classes: ClassList) -> Assignments:
                         minute=work_item["dueTime"].get("minutes", 0),
                     )
 
+                estimate = student_estimates.get((class_info.course_id, work_item["id"]))
+
                 assignment_list.append(
                     AssignmentInfo(
                         title=work_item["title"],
                         description=work_item.get("description"),
                         due_date=due_date,
                         due_time=due_time,
-                        estimated_minutes=work_item.get("estimatedMinutes"),
+                        estimated_minutes=estimate.estimated_minutes if estimate is not None else None,
+                        estimated_minutes_source="student" if estimate is not None else "unknown",
                         course_id=class_info.course_id,
                         assignment_id=work_item["id"],
                         submission_state=submission_state,
